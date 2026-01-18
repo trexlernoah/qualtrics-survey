@@ -152,20 +152,48 @@
 
         ctx.font = "24px Arial";
         ctx.fillStyle = "black";
-        ctx.textAlign = "center";
+        ctx.textAlign = "left";
 
-        ctx.fillText("Welcome to the Stroop Game!", canvas.width / 2, 100);
+        ctx.fillText("Stroop task instructions", canvas.width / 2, 40);
         ctx.fillText(
-          "In this game, you will see color words",
+          "In this task, you will see color names (red, green,",
           canvas.width / 2,
-          150
+          70
         );
-        ctx.fillText("displayed in different colors.", canvas.width / 2, 180);
+        ctx.fillText(
+          "blue, yellow) in different 'print' colors. You need",
+          canvas.width / 2,
+          100
+        );
+        ctx.fillText(
+          "to respond to the print color. For example, if you see:",
+          canvas.width / 2,
+          130
+        );
+        ctx.fillStyle = "red";
+        ctx.fillText("GREEN", canvas.width / 2, 160);
+        ctx.fillStyle = "black";
+        ctx.fillText(
+          "You need to respond to the print color (red), and",
+          canvas.width / 2,
+          190
+        );
+        ctx.fillText(
+          "press the associated button ('r'). The other buttons",
+          canvas.width / 2,
+          220
+        );
+        ctx.fillText(
+          "used in this study are 'g', 'b', and 'y', for green, blue,",
+          canvas.width / 2,
+          250
+        );
+        ctx.fillText("and yellow.", canvas.width / 2, 280);
 
         ctx.font = "18px Arial";
         ctx.fillStyle = "#666";
         ctx.fillText(
-          "Press SPACEBAR to continue",
+          "Press SPACEBAR for more instructions...",
           canvas.width / 2,
           canvas.height - 50
         );
@@ -180,7 +208,7 @@
 
         ctx.font = "24px Arial";
         ctx.fillStyle = "black";
-        ctx.textAlign = "center";
+        ctx.textAlign = "left";
 
         ctx.fillText(
           "Your task is to identify the COLOR of the text,",
@@ -207,7 +235,7 @@
         ctx.font = "18px Arial";
         ctx.fillStyle = "#666";
         ctx.fillText(
-          "Press SPACEBAR to start the game",
+          "Press SPACEBAR to start",
           canvas.width / 2,
           canvas.height - 50
         );
