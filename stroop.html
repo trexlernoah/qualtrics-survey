@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Stroop Game</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        font-family: Arial, sans-serif;
+        background-color: #f0f0f0;
+      }
+
+      h1 {
+        margin-bottom: 20px;
+        color: #333;
+      }
+
+      #gameCanvas {
+        border: 2px solid #333;
+        background-color: white;
+        margin: 20px 0;
+      }
+
+      #startButton {
+        padding: 15px 30px;
+        font-size: 18px;
+        background-color: #4caf50;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+      }
+
+      #startButton:hover {
+        background-color: #45a049;
+      }
+
+      #startButton:disabled {
+        background-color: #cccccc;
+        cursor: not-allowed;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Stroop Game</h1>
+    <canvas id="gameCanvas" width="600" height="400"></canvas>
+    <button id="startButton">Start Game</button>
+
+    <script>
+      const canvas = document.getElementById("gameCanvas");
+      const ctx = canvas.getContext("2d");
+      const startButton = document.getElementById("startButton");
+
+      // Game state constants
+      const GameState = {
+        WAITING: "waiting",
+        INSTRUCTIONS_1: "instructions_1",
+        INSTRUCTIONS_2: "instructions_2",
+        PLAYING: "playing",
+        FINISHED: "finished",
+      };
+
+      // Game configuration
+      const TOTAL_TRIALS = 40;
+      const COLORS = ["yellow", "green", "blue", "red"];
+      const WORDS = ["yellow", "green", "blue", "red"];
+      const KEY_MAP = {
+        y: "yellow",
+        g: "green",
+        b: "blue",
+        r: "red",
+      };
+
+      // Timing constants (in milliseconds)
+      const TIMING = {
+        CLEAR_SCREEN: 500,
+        PLUS_SIGN: 200,
+        PLUS_CLEAR: 100,
+        RESPONSE_WINDOW: 2000,
+        FEEDBACK_DISPLAY: 500,
+      };
+
+      // Game variables
+      let currentState = GameState.WAITING;
+      let currentTrial = 0;
+      let currentWord = "";
+      let currentColor = "";
+      let awaitingResponse = false;
+      let responseTimeout = null;
+      let correctCount = 0;
+
+      // Global metrics variables (accessible from window)
+      window.task_e = false; // Task engaged flag
+      window.task_te = 0; // Time engaged (milliseconds)
+      window.task_ct = 0; // Correct trials count
+      let gameStartTime = 0;
+
+      // Event listeners
+      startButton.addEventListener("click", handleStartButton);
+      document.addEventListener("keydown", handleKeyPress);
+
+      /**
+       * Handle start button click
+       */
+      function handleStartButton() {
+        startButton.disabled = true;
+        startButton.textContent = "Game in Progress...";
+        showInstructions1();
+      }
+
+      /**
+       * Handle keyboard input based on current game state
+       */
+      function handleKeyPress(event) {
+        if (event.code === "Space") {
+          event.preventDefault();
+
+          switch (currentState) {
+            case GameState.INSTRUCTIONS_1:
+              showInstructions2();
+              break;
+            case GameState.INSTRUCTIONS_2:
+              startGameplay();
+              break;
+          }
+        }
+
+        // Handle game responses (y, g, b, r keys)
+        if (currentState === GameState.PLAYING && awaitingResponse) {
+          const key = event.key.toLowerCase();
+          if (KEY_MAP.hasOwnProperty(key)) {
+            event.preventDefault();
+            handleResponse(key);
+          }
+        }
+      }
+
+      /**
+       * Display first set of instructions
+       */
+      function showInstructions1() {
+        currentState = GameState.INSTRUCTIONS_1;
+        clearCanvas();
+
+        ctx.font = "24px Arial";
+        ctx.fillStyle = "black";
+        ctx.textAlign = "center";
+
+        ctx.fillText("Welcome to the Stroop Game!", canvas.width / 2, 100);
+        ctx.fillText(
+          "In this game, you will see color words",
+          canvas.width / 2,
+          150
+        );
+        ctx.fillText("displayed in different colors.", canvas.width / 2, 180);
+
+        ctx.font = "18px Arial";
+        ctx.fillStyle = "#666";
+        ctx.fillText(
+          "Press SPACEBAR to continue",
+          canvas.width / 2,
+          canvas.height - 50
+        );
+      }
+
+      /**
+       * Display second set of instructions
+       */
+      function showInstructions2() {
+        currentState = GameState.INSTRUCTIONS_2;
+        clearCanvas();
+
+        ctx.font = "24px Arial";
+        ctx.fillStyle = "black";
+        ctx.textAlign = "center";
+
+        ctx.fillText(
+          "Your task is to identify the COLOR of the text,",
+          canvas.width / 2,
+          80
+        );
+        ctx.fillText("not the word itself.", canvas.width / 2, 110);
+
+        ctx.fillText("Press the key for the color:", canvas.width / 2, 160);
+        ctx.font = "20px Arial";
+        ctx.fillText(
+          "Y = Yellow  |  G = Green  |  B = Blue  |  R = Red",
+          canvas.width / 2,
+          190
+        );
+
+        ctx.font = "24px Arial";
+        ctx.fillText(
+          "Respond as quickly and accurately as possible!",
+          canvas.width / 2,
+          240
+        );
+
+        ctx.font = "18px Arial";
+        ctx.fillStyle = "#666";
+        ctx.fillText(
+          "Press SPACEBAR to start the game",
+          canvas.width / 2,
+          canvas.height - 50
+        );
+      }
+
+      /**
+       * Start the actual gameplay
+       */
+      function startGameplay() {
+        currentState = GameState.PLAYING;
+        currentTrial = 0;
+        correctCount = 0;
+
+        // Set engagement flag and record start time
+        window.task_e = true;
+        gameStartTime = Date.now();
+
+        runTrial();
+      }
+
+      /**
+       * Run a single trial of the Stroop game
+       */
+      function runTrial() {
+        if (currentTrial >= TOTAL_TRIALS) {
+          endGame();
+          return;
+        }
+
+        currentTrial++;
+
+        // Step 1: Clear screen for 500ms
+        clearCanvas();
+        setTimeout(() => {
+          // Step 2: Show plus sign for 200ms
+          showPlusSign();
+          setTimeout(() => {
+            // Step 3: Clear plus sign for 100ms
+            clearCanvas();
+            setTimeout(() => {
+              // Step 4: Show colored word and wait for response
+              showColoredWord();
+            }, TIMING.PLUS_CLEAR);
+          }, TIMING.PLUS_SIGN);
+        }, TIMING.CLEAR_SCREEN);
+      }
+
+      /**
+       * Display the fixation plus sign
+       */
+      function showPlusSign() {
+        clearCanvas();
+        ctx.font = "60px Arial";
+        ctx.fillStyle = "black";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("+", canvas.width / 2, canvas.height / 2);
+      }
+
+      /**
+       * Display a colored word and start waiting for response
+       */
+      function showColoredWord() {
+        // Select random word and color
+        currentWord = WORDS[Math.floor(Math.random() * WORDS.length)];
+        currentColor = COLORS[Math.floor(Math.random() * COLORS.length)];
+
+        clearCanvas();
+        ctx.font = "bold 72px Arial";
+        ctx.fillStyle = currentColor;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(
+          currentWord.toUpperCase(),
+          canvas.width / 2,
+          canvas.height / 2
+        );
+
+        // Start waiting for response
+        awaitingResponse = true;
+
+        // Set timeout for response window
+        responseTimeout = setTimeout(() => {
+          if (awaitingResponse) {
+            handleTimeout();
+          }
+        }, TIMING.RESPONSE_WINDOW);
+      }
+
+      /**
+       * Handle user response
+       */
+      function handleResponse(key) {
+        if (!awaitingResponse) return;
+
+        awaitingResponse = false;
+        clearTimeout(responseTimeout);
+
+        const selectedColor = KEY_MAP[key];
+        const isCorrect = selectedColor === currentColor;
+
+        if (isCorrect) {
+          correctCount++;
+          showFeedback("CORRECT", "green");
+        } else {
+          showFeedback("WRONG", "red");
+        }
+      }
+
+      /**
+       * Handle response timeout
+       */
+      function handleTimeout() {
+        awaitingResponse = false;
+        showFeedback("WRONG", "red");
+      }
+
+      /**
+       * Display feedback message
+       */
+      function showFeedback(message, color) {
+        clearCanvas();
+        ctx.font = "bold 48px Arial";
+        ctx.fillStyle = color;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(message, canvas.width / 2, canvas.height / 2);
+
+        // Continue to next trial after delay
+        setTimeout(() => {
+          runTrial();
+        }, TIMING.FEEDBACK_DISPLAY);
+      }
+
+      /**
+       * End the game and show results
+       */
+      function endGame() {
+        currentState = GameState.FINISHED;
+
+        // Calculate time engaged and update global metrics
+        const gameEndTime = Date.now();
+        window.task_te = gameEndTime - gameStartTime;
+        window.task_ct = correctCount;
+
+        // Log metrics to console
+        console.log("=== Game Metrics ===");
+        console.log("task_e (engaged):", window.task_e);
+        console.log("task_te (time engaged in ms):", window.task_te);
+        console.log("task_ct (correct trials):", window.task_ct);
+        console.log("===================");
+
+        clearCanvas();
+
+        const accuracy = ((correctCount / TOTAL_TRIALS) * 100).toFixed(1);
+
+        ctx.font = "36px Arial";
+        ctx.fillStyle = "black";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(
+          "Game Complete!",
+          canvas.width / 2,
+          canvas.height / 2 - 60
+        );
+
+        ctx.font = "28px Arial";
+        ctx.fillText(
+          `Score: ${correctCount} / ${TOTAL_TRIALS}`,
+          canvas.width / 2,
+          canvas.height / 2
+        );
+        ctx.fillText(
+          `Accuracy: ${accuracy}%`,
+          canvas.width / 2,
+          canvas.height / 2 + 40
+        );
+
+        // Re-enable start button
+        startButton.disabled = false;
+        startButton.textContent = "Start Game";
+      }
+
+      /**
+       * Clear the canvas
+       */
+      function clearCanvas() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+
+      /**
+       * Initialize the game - show initial message
+       */
+      function init() {
+        ctx.font = "24px Arial";
+        ctx.fillStyle = "#666";
+        ctx.textAlign = "center";
+        ctx.fillText(
+          'Click "Start Game" to begin',
+          canvas.width / 2,
+          canvas.height / 2
+        );
+      }
+
+      // Initialize on load
+      init();
+    </script>
+  </body>
+</html>
