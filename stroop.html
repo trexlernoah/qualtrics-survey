@@ -69,7 +69,7 @@
       };
 
       // Game configuration
-      const TOTAL_TRIALS = 40;
+      const TOTAL_TRIALS = 1;
       const COLORS = ["yellow", "green", "blue", "red"];
       const WORDS = ["yellow", "green", "blue", "red"];
       const KEY_MAP = {
@@ -98,7 +98,7 @@
       let correctCount = 0;
 
       // Global metrics variables (accessible from window)
-      window.task_e = false; // Task engaged flag
+      window.task_e = 0; // Task engaged flag
       window.task_te = 0; // Time engaged (milliseconds)
       window.task_ct = 0; // Correct trials count
       let gameStartTime = 0;
@@ -153,48 +153,49 @@
         ctx.font = "24px Arial";
         ctx.fillStyle = "black";
         ctx.textAlign = "left";
+        ctx.textBaseline = "alphabetic";
 
-        ctx.fillText("Stroop task instructions", canvas.width / 2, 40);
+        ctx.fillText("Stroop task instructions", 10, 40);
         ctx.fillText(
           "In this task, you will see color names (red, green,",
-          canvas.width / 2,
+          10,
           70
         );
         ctx.fillText(
           "blue, yellow) in different 'print' colors. You need",
-          canvas.width / 2,
+          10,
           100
         );
         ctx.fillText(
           "to respond to the print color. For example, if you see:",
-          canvas.width / 2,
+          10,
           130
         );
         ctx.fillStyle = "red";
-        ctx.fillText("GREEN", canvas.width / 2, 160);
+        ctx.fillText("GREEN", 10, 160);
         ctx.fillStyle = "black";
         ctx.fillText(
           "You need to respond to the print color (red), and",
-          canvas.width / 2,
+          10,
           190
         );
         ctx.fillText(
           "press the associated button ('r'). The other buttons",
-          canvas.width / 2,
+          10,
           220
         );
         ctx.fillText(
           "used in this study are 'g', 'b', and 'y', for green, blue,",
-          canvas.width / 2,
+          10,
           250
         );
-        ctx.fillText("and yellow.", canvas.width / 2, 280);
+        ctx.fillText("and yellow.", 10, 280);
 
         ctx.font = "18px Arial";
         ctx.fillStyle = "#666";
         ctx.fillText(
           "Press SPACEBAR for more instructions...",
-          canvas.width / 2,
+          10,
           canvas.height - 50
         );
       }
@@ -209,36 +210,25 @@
         ctx.font = "24px Arial";
         ctx.fillStyle = "black";
         ctx.textAlign = "left";
+        ctx.textBaseline = "alphabetic";
 
-        ctx.fillText(
-          "Your task is to identify the COLOR of the text,",
-          canvas.width / 2,
-          80
-        );
-        ctx.fillText("not the word itself.", canvas.width / 2, 110);
+        ctx.fillText("Your task is to identify the COLOR of the text,", 10, 80);
+        ctx.fillText("not the word itself.", 10, 110);
 
-        ctx.fillText("Press the key for the color:", canvas.width / 2, 160);
+        ctx.fillText("Press the key for the color:", 10, 160);
         ctx.font = "20px Arial";
         ctx.fillText(
           "Y = Yellow  |  G = Green  |  B = Blue  |  R = Red",
-          canvas.width / 2,
+          10,
           190
         );
 
         ctx.font = "24px Arial";
-        ctx.fillText(
-          "Respond as quickly and accurately as possible!",
-          canvas.width / 2,
-          240
-        );
+        ctx.fillText("Respond as quickly and accurately as possible!", 10, 240);
 
         ctx.font = "18px Arial";
         ctx.fillStyle = "#666";
-        ctx.fillText(
-          "Press SPACEBAR to start",
-          canvas.width / 2,
-          canvas.height - 50
-        );
+        ctx.fillText("Press SPACEBAR to start", 10, canvas.height - 50);
       }
 
       /**
@@ -250,7 +240,7 @@
         correctCount = 0;
 
         // Set engagement flag and record start time
-        window.task_e = true;
+        window.task_e = 1;
         gameStartTime = Date.now();
 
         runTrial();
@@ -388,6 +378,10 @@
         console.log("task_ct (correct trials):", window.task_ct);
         console.log("===================");
 
+        Qualtrics.SurveyEngine.setJSEmbeddedData("task_e", window.task_e);
+        Qualtrics.SurveyEngine.setJSEmbeddedData("task_te", window.task_te);
+        Qualtrics.SurveyEngine.setJSEmbeddedData("task_ct", window.task_ct);
+
         clearCanvas();
 
         const accuracy = ((correctCount / TOTAL_TRIALS) * 100).toFixed(1);
@@ -397,26 +391,10 @@
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText(
-          "Game Complete!",
+          "Task Complete!",
           canvas.width / 2,
           canvas.height / 2 - 60
         );
-
-        ctx.font = "28px Arial";
-        ctx.fillText(
-          `Score: ${correctCount} / ${TOTAL_TRIALS}`,
-          canvas.width / 2,
-          canvas.height / 2
-        );
-        ctx.fillText(
-          `Accuracy: ${accuracy}%`,
-          canvas.width / 2,
-          canvas.height / 2 + 40
-        );
-
-        // Re-enable start button
-        startButton.disabled = false;
-        startButton.textContent = "Start Game";
       }
 
       /**
@@ -433,6 +411,7 @@
         ctx.font = "24px Arial";
         ctx.fillStyle = "#666";
         ctx.textAlign = "center";
+        ctx.textBaseline = "alphabetic";
         ctx.fillText(
           'Click "Start Game" to begin',
           canvas.width / 2,
