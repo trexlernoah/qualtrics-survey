@@ -154,7 +154,8 @@
         FEEDBACK_DISPLAY: 500,
       };
 
-      const TOTAL_TRIALS = WORD_PAIRS.length;
+      //   const TOTAL_TRIALS = WORD_PAIRS.length;
+      const TOTAL_TRIALS = 1;
 
       // Game variables
       let currentState = GameState.WAITING;
@@ -165,9 +166,9 @@
       let correctCount = 0;
 
       // Global metrics variables (accessible from window)
-      window.task_e = false; // Task engaged flag
-      window.task_te = 0; // Time engaged (milliseconds)
-      window.task_ct = 0; // Correct trials count
+      window.lex_task_e = 0; // Task engaged flag
+      window.lex_task_te = 0; // Time engaged (milliseconds)
+      window.lex_task_ct = 0; // Correct trials count
       let gameStartTime = 0;
 
       // Event listeners
@@ -271,7 +272,7 @@
         correctCount = 0;
 
         // Set engagement flag and record start time
-        window.task_e = true;
+        window.lex_task_e = 1;
         gameStartTime = Date.now();
 
         runTrial();
@@ -365,7 +366,7 @@
 
         if (isCorrect) {
           correctCount++;
-          window.task_ct = correctCount;
+          window.lex_task_ct = correctCount;
           showFeedback("CORRECT", "green");
         } else {
           showFeedback("INCORRECT", "red");
@@ -405,15 +406,19 @@
 
         // Calculate time engaged and update global metrics
         const gameEndTime = Date.now();
-        window.task_te = gameEndTime - gameStartTime;
-        window.task_ct = correctCount;
+        window.lex_task_te = gameEndTime - gameStartTime;
+        window.lex_task_ct = correctCount;
 
         // Log metrics to console
         console.log("=== Game Metrics ===");
-        console.log("task_e (engaged):", window.task_e);
-        console.log("task_te (time engaged in ms):", window.task_te);
-        console.log("task_ct (correct trials):", window.task_ct);
+        console.log("task_e (engaged):", window.lex_task_e);
+        console.log("task_te (time engaged in ms):", window.lex_task_te);
+        console.log("task_ct (correct trials):", window.lex_task_ct);
         console.log("===================");
+
+        Qualtrics.SurveyEngine.setJSEmbeddedData("task_e", window.lex_task_e);
+        Qualtrics.SurveyEngine.setJSEmbeddedData("task_te", window.lex_task_te);
+        Qualtrics.SurveyEngine.setJSEmbeddedData("task_ct", window.lex_task_ct);
 
         clearCanvas();
 
@@ -428,22 +433,6 @@
           canvas.width / 2,
           canvas.height / 2 - 60
         );
-
-        ctx.font = "28px Arial";
-        ctx.fillText(
-          `Score: ${correctCount} / ${TOTAL_TRIALS}`,
-          canvas.width / 2,
-          canvas.height / 2
-        );
-        ctx.fillText(
-          `Accuracy: ${accuracy}%`,
-          canvas.width / 2,
-          canvas.height / 2 + 40
-        );
-
-        // Re-enable start button
-        startButton.disabled = false;
-        startButton.textContent = "Start Game";
       }
 
       /**
