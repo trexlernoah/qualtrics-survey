@@ -416,9 +416,18 @@
         console.log("task_ct (correct trials):", window.lex_task_ct);
         console.log("===================");
 
-        Qualtrics.SurveyEngine.setJSEmbeddedData("task_e", window.lex_task_e);
-        Qualtrics.SurveyEngine.setJSEmbeddedData("task_te", window.lex_task_te);
-        Qualtrics.SurveyEngine.setJSEmbeddedData("task_ct", window.lex_task_ct);
+        Qualtrics.SurveyEngine.setJSEmbeddedData(
+          "lex_task_e",
+          window.lex_task_e
+        );
+        Qualtrics.SurveyEngine.setJSEmbeddedData(
+          "lex_task_te",
+          window.lex_task_te
+        );
+        Qualtrics.SurveyEngine.setJSEmbeddedData(
+          "lex_task_ct",
+          window.lex_task_ct
+        );
 
         clearCanvas();
 
