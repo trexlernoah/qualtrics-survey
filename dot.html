@@ -1,0 +1,1307 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dot Probe Task</title>
+  </head>
+  <body>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        display: fdot;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        font-family: Arial, sans-serif;
+        background-color: #f0f0f0;
+      }
+
+      h1 {
+        margin-bottom: 20px;
+        color: #333;
+      }
+
+      #gameCanvas {
+        width: 600px;
+        height: 400px;
+        border: 2px solid #333;
+        background-color: white;
+        margin: 20px 0;
+      }
+
+      #startButton {
+        padding: 15px 30px;
+        font-size: 18px;
+        background-color: #4caf50;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+      }
+
+      #startButton:hover {
+        background-color: #45a049;
+      }
+
+      #startButton:disabled {
+        background-color: #cccccc;
+        cursor: not-allowed;
+      }
+    </style>
+
+    <h1>Dot Probe Task</h1>
+    <canvas id="gameCanvas" width="600" height="400"></canvas>
+    <button id="startButton">Start Game</button>
+
+    <script>
+      const canvas = document.getElementById("gameCanvas");
+      const ctx = canvas.getContext("2d");
+      const startButton = document.getElementById("startButton");
+
+      // Game state constants
+      const GameState = {
+        WAITING: "waiting",
+        INSTRUCTIONS_1: "instructions_1",
+        INSTRUCTIONS_2: "instructions_2",
+        PART_1_READY: "part_1_ready",
+        PART_1_PLAYING: "part_1_playing",
+        PART_2_READY: "part_2_ready",
+        PART_2_PLAYING: "part_2_playing",
+        PART_3_READY: "part_3_ready",
+        PART_3_PLAYING: "part_3_playing",
+        FINISHED: "finished",
+      };
+
+      // Dot probe trials
+      // Format: [condition, topWord, bottomWord, probeReplaces, probeDirection, correctAnswer]
+      // Condition: 0=neutral, 1=?, 2=?
+      // probeDirection: "<" = left (A key), ">" = right (L key)
+      // correctAnswer: 1 = A key (left), 2 = L key (right)
+      const DOT_PROBE_TRIALS = [
+        {
+          condition: 0,
+          topWord: "Mountain",
+          bottomWord: "Coffee",
+          probeReplaces: "Coffee",
+          probeDirection: "<",
+          correctAnswer: 1,
+        },
+        {
+          condition: 0,
+          topWord: "Car",
+          bottomWord: "Soup",
+          probeReplaces: "Car",
+          probeDirection: ">",
+          correctAnswer: 2,
+        },
+        {
+          condition: 0,
+          topWord: "Tree",
+          bottomWord: "Happy meal",
+          probeReplaces: "Happy meal",
+          probeDirection: ">",
+          correctAnswer: 2,
+        },
+        {
+          condition: 1,
+          topWord: "Forest",
+          bottomWord: "Failure",
+          probeReplaces: "Forest",
+          probeDirection: ">",
+          correctAnswer: 2,
+        },
+        {
+          condition: 2,
+          topWord: "Creation",
+          bottomWord: "Going blank",
+          probeReplaces: "Going blank",
+          probeDirection: ">",
+          correctAnswer: 2,
+        },
+        {
+          condition: 1,
+          topWord: "Exam",
+          bottomWord: "Oven",
+          probeReplaces: "Oven",
+          probeDirection: "<",
+          correctAnswer: 1,
+        },
+        {
+          condition: 2,
+          topWord: "Exam worry",
+          bottomWord: "Definition",
+          probeReplaces: "Definition",
+          probeDirection: "<",
+          correctAnswer: 1,
+        },
+        {
+          condition: 2,
+          topWord: "Frustration",
+          bottomWord: "History",
+          probeReplaces: "Frustration",
+          probeDirection: "<",
+          correctAnswer: 1,
+        },
+        {
+          condition: 2,
+          topWord: "Exam paper",
+          bottomWord: "Advertisement",
+          probeReplaces: "Exam paper",
+          probeDirection: ">",
+          correctAnswer: 2,
+        },
+        {
+          condition: 2,
+          topWord: "Mark",
+          bottomWord: "Tree",
+          probeReplaces: "Mark",
+          probeDirection: "<",
+          correctAnswer: 1,
+        },
+        {
+          condition: 2,
+          topWord: "Carpet",
+          bottomWord: "Coursework",
+          probeReplaces: "Coursework",
+          probeDirection: "<",
+          correctAnswer: 1,
+        },
+        {
+          condition: 1,
+          topWord: "Studying",
+          bottomWord: "Newspaper",
+          probeReplaces: "Newspaper",
+          probeDirection: "<",
+          correctAnswer: 1,
+        },
+        {
+          condition: 2,
+          topWord: "Electricity",
+          bottomWord: "Letting myself down",
+          probeReplaces: "Letting myself down",
+          probeDirection: ">",
+          correctAnswer: 2,
+        },
+        {
+          condition: 2,
+          topWord: "Frequency",
+          bottomWord: "Timed exam",
+          probeReplaces: "Timed exam",
+          probeDirection: "<",
+          correctAnswer: 1,
+        },
+        {
+          condition: 1,
+          topWord: "Picture",
+          bottomWord: "Hurry",
+          probeReplaces: "Picture",
+          probeDirection: "<",
+          correctAnswer: 1,
+        },
+        {
+          condition: 1,
+          topWord: "Room",
+          bottomWord: "Mark",
+          probeReplaces: "Room",
+          probeDirection: "<",
+          correctAnswer: 1,
+        },
+        {
+          condition: 2,
+          topWord: "Floor",
+          bottomWord: "Fail",
+          probeReplaces: "Fail",
+          probeDirection: "<",
+          correctAnswer: 1,
+        },
+        {
+          condition: 1,
+          topWord: "Marking",
+          bottomWord: "Oven",
+          probeReplaces: "Oven",
+          probeDirection: ">",
+          correctAnswer: 2,
+        },
+        {
+          condition: 2,
+          topWord: "Cushion",
+          bottomWord: "Marking",
+          probeReplaces: "Marking",
+          probeDirection: "<",
+          correctAnswer: 1,
+        },
+        {
+          condition: 2,
+          topWord: "Activity",
+          bottomWord: "Exam result",
+          probeReplaces: "Exam result",
+          probeDirection: ">",
+          correctAnswer: 2,
+        },
+        {
+          condition: 1,
+          topWord: "Going blank",
+          bottomWord: "Elephant",
+          probeReplaces: "Elephant",
+          probeDirection: ">",
+          correctAnswer: 2,
+        },
+        {
+          condition: 2,
+          topWord: "Assessment",
+          bottomWord: "Studio",
+          probeReplaces: "Assessment",
+          probeDirection: ">",
+          correctAnswer: 2,
+        },
+        {
+          condition: 2,
+          topWord: "GCSE",
+          bottomWord: "Diagonal",
+          probeReplaces: "GCSE",
+          probeDirection: "<",
+          correctAnswer: 1,
+        },
+        {
+          condition: 2,
+          topWord: "Incorrect answer",
+          bottomWord: "Electricity",
+          probeReplaces: "Incorrect answer",
+          probeDirection: ">",
+          correctAnswer: 2,
+        },
+        {
+          condition: 1,
+          topWord: "Frustration",
+          bottomWord: "Collection",
+          probeReplaces: "Collection",
+          probeDirection: ">",
+          correctAnswer: 2,
+        },
+        {
+          condition: 1,
+          topWord: "Multiple choice",
+          bottomWord: "Diagonal",
+          probeReplaces: "Diagonal",
+          probeDirection: "<",
+          correctAnswer: 1,
+        },
+        {
+          condition: 2,
+          topWord: "Creation",
+          bottomWord: "Studying",
+          probeReplaces: "Studying",
+          probeDirection: ">",
+          correctAnswer: 2,
+        },
+        {
+          condition: 1,
+          topWord: "Triangle",
+          bottomWord: "Revision",
+          probeReplaces: "Triangle",
+          probeDirection: ">",
+          correctAnswer: 2,
+        },
+        {
+          condition: 1,
+          topWord: "Definition",
+          bottomWord: "Exam panic",
+          probeReplaces: "Definition",
+          probeDirection: ">",
+          correctAnswer: 2,
+        },
+        {
+          condition: 1,
+          topWord: "Test",
+          bottomWord: "Floor",
+          probeReplaces: "Floor",
+          probeDirection: ">",
+          correctAnswer: 2,
+        },
+        {
+          condition: 1,
+          topWord: "Activity",
+          bottomWord: "Exam paper",
+          probeReplaces: "Activity",
+          probeDirection: ">",
+          correctAnswer: 2,
+        },
+        {
+          condition: 1,
+          topWord: "Personality",
+          bottomWord: "Incorrect answer",
+          probeReplaces: "Personality",
+          probeDirection: "<",
+          correctAnswer: 1,
+        },
+        {
+          condition: 2,
+          topWord: "Exam paper",
+          bottomWord: "Television",
+          probeReplaces: "Exam paper",
+          probeDirection: ">",
+          correctAnswer: 2,
+        },
+        {
+          condition: 2,
+          topWord: "Timed exam",
+          bottomWord: "Telephone",
+          probeReplaces: "Timed exam",
+          probeDirection: ">",
+          correctAnswer: 2,
+        },
+        {
+          condition: 2,
+          topWord: "Incorrect",
+          bottomWord: "Frequency",
+          probeReplaces: "Incorrect",
+          probeDirection: "<",
+          correctAnswer: 1,
+        },
+        {
+          condition: 1,
+          topWord: "Digit",
+          bottomWord: "Cramming",
+          probeReplaces: "Digit",
+          probeDirection: "<",
+          correctAnswer: 1,
+        },
+        {
+          condition: 2,
+          topWord: "Table",
+          bottomWord: "Failure",
+          probeReplaces: "Failure",
+          probeDirection: "<",
+          correctAnswer: 1,
+        },
+        {
+          condition: 1,
+          topWord: "Cup",
+          bottomWord: "Fail",
+          probeReplaces: "Cup",
+          probeDirection: ">",
+          correctAnswer: 2,
+        },
+        {
+          condition: 1,
+          topWord: "Letting myself down",
+          bottomWord: "Personality",
+          probeReplaces: "Personality",
+          probeDirection: "<",
+          correctAnswer: 1,
+        },
+        {
+          condition: 1,
+          topWord: "Abbreviation",
+          bottomWord: "Incorrect answer",
+          probeReplaces: "Abbreviation",
+          probeDirection: ">",
+          correctAnswer: 2,
+        },
+        {
+          condition: 2,
+          topWord: "Electricity",
+          bottomWord: "Invigilator",
+          probeReplaces: "Invigilator",
+          probeDirection: "<",
+          correctAnswer: 1,
+        },
+        {
+          condition: 1,
+          topWord: "Abbreviation",
+          bottomWord: "Letting myself down",
+          probeReplaces: "Abbreviation",
+          probeDirection: "<",
+          correctAnswer: 1,
+        },
+        {
+          condition: 2,
+          topWord: "Handwriting",
+          bottomWord: "Studying",
+          probeReplaces: "Studying",
+          probeDirection: "<",
+          correctAnswer: 1,
+        },
+        {
+          condition: 1,
+          topWord: "Digit",
+          bottomWord: "Marking",
+          probeReplaces: "Digit",
+          probeDirection: ">",
+          correctAnswer: 2,
+        },
+        {
+          condition: 1,
+          topWord: "Jumper",
+          bottomWord: "Marking",
+          probeReplaces: "Jumper",
+          probeDirection: ">",
+          correctAnswer: 2,
+        },
+        {
+          condition: 1,
+          topWord: "Elephant",
+          bottomWord: "Wrong answer",
+          probeReplaces: "Elephant",
+          probeDirection: "<",
+          correctAnswer: 1,
+        },
+        {
+          condition: 1,
+          topWord: "Assessment",
+          bottomWord: "Elephant",
+          probeReplaces: "Elephant",
+          probeDirection: ">",
+          correctAnswer: 2,
+        },
+        {
+          condition: 1,
+          topWord: "Newspaper",
+          bottomWord: "Assessment",
+          probeReplaces: "Newspaper",
+          probeDirection: "<",
+          correctAnswer: 1,
+        },
+        {
+          condition: 2,
+          topWord: "Picture",
+          bottomWord: "Cramming",
+          probeReplaces: "Cramming",
+          probeDirection: "<",
+          correctAnswer: 1,
+        },
+        {
+          condition: 1,
+          topWord: "Coursework",
+          bottomWord: "Jumper",
+          probeReplaces: "Jumper",
+          probeDirection: ">",
+          correctAnswer: 2,
+        },
+        {
+          condition: 1,
+          topWord: "Exam result",
+          bottomWord: "Kilometre",
+          probeReplaces: "Exam result",
+          probeDirection: ">",
+          correctAnswer: 2,
+        },
+        {
+          condition: 2,
+          topWord: "Invigilator",
+          bottomWord: "Personality",
+          probeReplaces: "Invigilator",
+          probeDirection: "<",
+          correctAnswer: 1,
+        },
+        {
+          condition: 2,
+          topWord: "Grade",
+          bottomWord: "Chair",
+          probeReplaces: "Grade",
+          probeDirection: ">",
+          correctAnswer: 2,
+        },
+        {
+          condition: 2,
+          topWord: "Grade",
+          bottomWord: "Tree",
+          probeReplaces: "Grade",
+          probeDirection: ">",
+          correctAnswer: 2,
+        },
+        {
+          condition: 1,
+          topWord: "Liquid",
+          bottomWord: "Coursework",
+          probeReplaces: "Liquid",
+          probeDirection: "<",
+          correctAnswer: 1,
+        },
+        {
+          condition: 2,
+          topWord: "SATs",
+          bottomWord: "Floor",
+          probeReplaces: "SATs",
+          probeDirection: ">",
+          correctAnswer: 2,
+        },
+        {
+          condition: 2,
+          topWord: "Exam question",
+          bottomWord: "Definition",
+          probeReplaces: "Exam question",
+          probeDirection: "<",
+          correctAnswer: 1,
+        },
+        {
+          condition: 1,
+          topWord: "Incorrect",
+          bottomWord: "Newspaper",
+          probeReplaces: "Newspaper",
+          probeDirection: ">",
+          correctAnswer: 2,
+        },
+        {
+          condition: 1,
+          topWord: "Exam",
+          bottomWord: "Jumper",
+          probeReplaces: "Jumper",
+          probeDirection: "<",
+          correctAnswer: 1,
+        },
+        {
+          condition: 1,
+          topWord: "Going blank",
+          bottomWord: "Triangle",
+          probeReplaces: "Triangle",
+          probeDirection: "<",
+          correctAnswer: 1,
+        },
+        {
+          condition: 2,
+          topWord: "Test",
+          bottomWord: "Chair",
+          probeReplaces: "Test",
+          probeDirection: ">",
+          correctAnswer: 2,
+        },
+        {
+          condition: 2,
+          topWord: "Revision",
+          bottomWord: "Collection",
+          probeReplaces: "Revision",
+          probeDirection: "<",
+          correctAnswer: 1,
+        },
+        {
+          condition: 1,
+          topWord: "GCSE",
+          bottomWord: "Kilometre",
+          probeReplaces: "Kilometre",
+          probeDirection: "<",
+          correctAnswer: 1,
+        },
+        {
+          condition: 1,
+          topWord: "Wrong answer",
+          bottomWord: "Handwriting",
+          probeReplaces: "Handwriting",
+          probeDirection: "<",
+          correctAnswer: 1,
+        },
+        {
+          condition: 1,
+          topWord: "Television",
+          bottomWord: "Exam question",
+          probeReplaces: "Television",
+          probeDirection: ">",
+          correctAnswer: 2,
+        },
+        {
+          condition: 2,
+          topWord: "Property",
+          bottomWord: "Timed exam",
+          probeReplaces: "Timed exam",
+          probeDirection: ">",
+          correctAnswer: 2,
+        },
+        {
+          condition: 2,
+          topWord: "Abbreviation",
+          bottomWord: "Invigilator",
+          probeReplaces: "Invigilator",
+          probeDirection: ">",
+          correctAnswer: 2,
+        },
+        {
+          condition: 2,
+          topWord: "Television",
+          bottomWord: "Multiple choice",
+          probeReplaces: "Multiple choice",
+          probeDirection: "<",
+          correctAnswer: 1,
+        },
+        {
+          condition: 2,
+          topWord: "Wrong answer",
+          bottomWord: "Studio",
+          probeReplaces: "Wrong answer",
+          probeDirection: "<",
+          correctAnswer: 1,
+        },
+        {
+          condition: 1,
+          topWord: "Failure",
+          bottomWord: "Picture",
+          probeReplaces: "Picture",
+          probeDirection: "<",
+          correctAnswer: 1,
+        },
+        {
+          condition: 1,
+          topWord: "Room",
+          bottomWord: "Grade",
+          probeReplaces: "Room",
+          probeDirection: "<",
+          correctAnswer: 1,
+        },
+        {
+          condition: 1,
+          topWord: "Forest",
+          bottomWord: "Exam",
+          probeReplaces: "Forest",
+          probeDirection: "<",
+          correctAnswer: 1,
+        },
+        {
+          condition: 1,
+          topWord: "Telephone",
+          bottomWord: "Frustration",
+          probeReplaces: "Telephone",
+          probeDirection: "<",
+          correctAnswer: 1,
+        },
+        {
+          condition: 2,
+          topWord: "Mark",
+          bottomWord: "Chair",
+          probeReplaces: "Mark",
+          probeDirection: "<",
+          correctAnswer: 1,
+        },
+        {
+          condition: 1,
+          topWord: "Study",
+          bottomWord: "Carpet",
+          probeReplaces: "Carpet",
+          probeDirection: ">",
+          correctAnswer: 2,
+        },
+        {
+          condition: 2,
+          topWord: "Cramming",
+          bottomWord: "Basket",
+          probeReplaces: "Cramming",
+          probeDirection: ">",
+          correctAnswer: 2,
+        },
+        {
+          condition: 2,
+          topWord: "Handwriting",
+          bottomWord: "Going blank",
+          probeReplaces: "Going blank",
+          probeDirection: ">",
+          correctAnswer: 2,
+        },
+        {
+          condition: 2,
+          topWord: "Liquid",
+          bottomWord: "Study",
+          probeReplaces: "Study",
+          probeDirection: "<",
+          correctAnswer: 1,
+        },
+        {
+          condition: 1,
+          topWord: "Exam panic",
+          bottomWord: "Diagonal",
+          probeReplaces: "Diagonal",
+          probeDirection: "<",
+          correctAnswer: 1,
+        },
+        {
+          condition: 2,
+          topWord: "Fail",
+          bottomWord: "Grass",
+          probeReplaces: "Fail",
+          probeDirection: ">",
+          correctAnswer: 2,
+        },
+        {
+          condition: 2,
+          topWord: "Jumper",
+          bottomWord: "Hurry",
+          probeReplaces: "Hurry",
+          probeDirection: ">",
+          correctAnswer: 2,
+        },
+        {
+          condition: 1,
+          topWord: "Revision",
+          bottomWord: "Frequency",
+          probeReplaces: "Frequency",
+          probeDirection: "<",
+          correctAnswer: 1,
+        },
+        {
+          condition: 2,
+          topWord: "Multiple choice",
+          bottomWord: "Advertisement",
+          probeReplaces: "Multiple choice",
+          probeDirection: "<",
+          correctAnswer: 1,
+        },
+        {
+          condition: 1,
+          topWord: "Television",
+          bottomWord: "Exam worry",
+          probeReplaces: "Television",
+          probeDirection: ">",
+          correctAnswer: 2,
+        },
+        {
+          condition: 2,
+          topWord: "Picture",
+          bottomWord: "Study",
+          probeReplaces: "Study",
+          probeDirection: ">",
+          correctAnswer: 2,
+        },
+        {
+          condition: 2,
+          topWord: "Cup",
+          bottomWord: "SATs",
+          probeReplaces: "SATs",
+          probeDirection: ">",
+          correctAnswer: 2,
+        },
+        {
+          condition: 2,
+          topWord: "Definition",
+          bottomWord: "GCSE",
+          probeReplaces: "GCSE",
+          probeDirection: ">",
+          correctAnswer: 2,
+        },
+        {
+          condition: 2,
+          topWord: "Advertisement",
+          bottomWord: "Exam panic",
+          probeReplaces: "Exam panic",
+          probeDirection: "<",
+          correctAnswer: 1,
+        },
+        {
+          condition: 1,
+          topWord: "Coursework",
+          bottomWord: "Basket",
+          probeReplaces: "Basket",
+          probeDirection: ">",
+          correctAnswer: 2,
+        },
+        {
+          condition: 2,
+          topWord: "Grade",
+          bottomWord: "Grass",
+          probeReplaces: "Grade",
+          probeDirection: "<",
+          correctAnswer: 1,
+        },
+        {
+          condition: 2,
+          topWord: "Table",
+          bottomWord: "Hurry",
+          probeReplaces: "Hurry",
+          probeDirection: ">",
+          correctAnswer: 2,
+        },
+        {
+          condition: 2,
+          topWord: "Exam question",
+          bottomWord: "Activity",
+          probeReplaces: "Exam question",
+          probeDirection: "<",
+          correctAnswer: 1,
+        },
+        {
+          condition: 1,
+          topWord: "Exam result",
+          bottomWord: "Radiator",
+          probeReplaces: "Radiator",
+          probeDirection: ">",
+          correctAnswer: 2,
+        },
+        {
+          condition: 2,
+          topWord: "Incorrect",
+          bottomWord: "Property",
+          probeReplaces: "Incorrect",
+          probeDirection: ">",
+          correctAnswer: 2,
+        },
+        {
+          condition: 2,
+          topWord: "Grass",
+          bottomWord: "SATs",
+          probeReplaces: "SATs",
+          probeDirection: ">",
+          correctAnswer: 2,
+        },
+        {
+          condition: 1,
+          topWord: "Fail",
+          bottomWord: "Tree",
+          probeReplaces: "Tree",
+          probeDirection: ">",
+          correctAnswer: 2,
+        },
+        {
+          condition: 1,
+          topWord: "Grass",
+          bottomWord: "Test",
+          probeReplaces: "Grass",
+          probeDirection: ">",
+          correctAnswer: 2,
+        },
+        {
+          condition: 1,
+          topWord: "Cushion",
+          bottomWord: "Study",
+          probeReplaces: "Cushion",
+          probeDirection: ">",
+          correctAnswer: 2,
+        },
+        {
+          condition: 1,
+          topWord: "Radiator",
+          bottomWord: "Multiple choice",
+          probeReplaces: "Radiator",
+          probeDirection: ">",
+          correctAnswer: 2,
+        },
+      ];
+
+      const TOTAL_TRIALS = DOT_PROBE_TRIALS.length;
+
+      // Trial distribution across parts
+      const PART_1_TRIALS = 3; // Training session
+      const PART_2_TRIALS = 48; // First half of main task
+      const PART_3_TRIALS = 48; // Second half of main task
+
+      // Timing constants (in milliseconds)
+      const TIMING = {
+        FIXATION: 500,
+        WORD_DISPLAY: 500,
+        RESPONSE_WINDOW: 5000,
+        FEEDBACK_DISPLAY: 500,
+      };
+
+      // Game variables
+      let currentState = GameState.WAITING;
+      let currentPart = 1;
+      let currentTrialInPart = 0;
+      let currentTrialOverall = 0;
+      let currentTrial = null;
+      let awaitingResponse = false;
+      let responseTimeout = null;
+      let correctCount = 0;
+
+      // Global metrics variables (accessible from window)
+      window.dot_task_e = 0; // Task engaged flag
+      window.dot_task_te = 0; // Time engaged (milliseconds)
+      window.dot_task_ct = 0; // Correct trials count
+      let gameStartTime = 0;
+
+      // Event listeners
+      startButton.addEventListener("click", handleStartButton);
+      document.addEventListener("keydown", handleKeyPress);
+
+      /**
+       * Handle start button click
+       */
+      function handleStartButton() {
+        startButton.disabled = true;
+        startButton.textContent = "Game in Progress...";
+        showInstructions1();
+      }
+
+      /**
+       * Handle keyboard input based on current game state
+       */
+      function handleKeyPress(event) {
+        if (event.code === "Space") {
+          event.preventDefault();
+
+          switch (currentState) {
+            case GameState.INSTRUCTIONS_1:
+              showPartReady(1);
+              break;
+            case GameState.PART_1_READY:
+              startPart(1);
+              break;
+            case GameState.PART_2_READY:
+              startPart(2);
+              break;
+            case GameState.PART_3_READY:
+              startPart(3);
+              break;
+          }
+        }
+
+        // Handle game responses (A and L keys)
+        if (awaitingResponse) {
+          const key = event.key.toLowerCase();
+          if (key === "a" || key === "l") {
+            event.preventDefault();
+            handleResponse(key);
+          }
+        }
+      }
+
+      /**
+       * Display first set of instructions
+       */
+      function showInstructions1() {
+        currentState = GameState.INSTRUCTIONS_1;
+        clearCanvas();
+
+        ctx.font = "28px Arial";
+        ctx.fillStyle = "black";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "alphabetic";
+
+        ctx.fillText("Dot Probe Task", canvas.width / 2, 80);
+
+        ctx.font = "20px Arial";
+        ctx.fillText(
+          "On each trial, you will see two words.",
+          canvas.width / 2,
+          140
+        );
+        ctx.fillText(
+          "These are followed by a left or right pointing arrow.",
+          canvas.width / 2,
+          170
+        );
+
+        ctx.fillText(
+          "If the arrow points left <, press the A key.",
+          canvas.width / 2,
+          220
+        );
+        ctx.fillText(
+          "If the arrow points right >, press the L key.",
+          canvas.width / 2,
+          250
+        );
+
+        ctx.font = "18px Arial";
+        ctx.fillStyle = "#666";
+        ctx.fillText(
+          "Press SPACEBAR to start the task",
+          canvas.width / 2,
+          canvas.height - 50
+        );
+      }
+
+      /**
+       * Get the number of trials for a specific part
+       */
+      function getTrialsForPart(partNumber) {
+        if (partNumber === 1) return PART_1_TRIALS;
+        if (partNumber === 2) return PART_2_TRIALS;
+        if (partNumber === 3) return PART_3_TRIALS;
+        return 0;
+      }
+
+      /**
+       * Get the starting trial index for a specific part
+       */
+      function getStartTrialForPart(partNumber) {
+        if (partNumber === 1) return 0;
+        if (partNumber === 2) return PART_1_TRIALS;
+        if (partNumber === 3) return PART_1_TRIALS + PART_2_TRIALS;
+        return 0;
+      }
+
+      /**
+       * Display "Get ready for part X" screen
+       */
+      function showPartReady(partNumber) {
+        currentPart = partNumber;
+
+        if (partNumber === 1) {
+          currentState = GameState.PART_1_READY;
+        } else if (partNumber === 2) {
+          currentState = GameState.PART_2_READY;
+        } else if (partNumber === 3) {
+          currentState = GameState.PART_3_READY;
+        }
+
+        clearCanvas();
+
+        ctx.font = "36px Arial";
+        ctx.fillStyle = "black";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+
+        ctx.fillText(
+          `Get ready for part ${partNumber}.`,
+          canvas.width / 2,
+          canvas.height / 2 - 30
+        );
+
+        ctx.font = "24px Arial";
+        ctx.fillStyle = "#666";
+        ctx.fillText(
+          "Press SPACEBAR to start",
+          canvas.width / 2,
+          canvas.height / 2 + 30
+        );
+      }
+
+      /**
+       * Start a specific part of the game
+       */
+      function startPart(partNumber) {
+        if (partNumber === 1) {
+          currentState = GameState.PART_1_PLAYING;
+          window.dot_task_e = 1;
+          gameStartTime = Date.now();
+        } else if (partNumber === 2) {
+          currentState = GameState.PART_2_PLAYING;
+        } else if (partNumber === 3) {
+          currentState = GameState.PART_3_PLAYING;
+        }
+
+        currentTrialInPart = 0;
+        runTrial();
+      }
+
+      /**
+       * Run a single trial
+       */
+      function runTrial() {
+        const trialsInThisPart = getTrialsForPart(currentPart);
+
+        // Check if part is complete
+        if (currentTrialInPart >= trialsInThisPart) {
+          // Move to next part or end game
+          if (currentPart === 1) {
+            showPartReady(2);
+          } else if (currentPart === 2) {
+            showPartReady(3);
+          } else {
+            endGame();
+          }
+          return;
+        }
+
+        // Get current trial data
+        currentTrialOverall =
+          getStartTrialForPart(currentPart) + currentTrialInPart;
+        currentTrial = DOT_PROBE_TRIALS[currentTrialOverall];
+        currentTrialInPart++;
+
+        // Step 1: Show fixation "+++" for 500ms
+        showFixation();
+        setTimeout(() => {
+          // Step 2: Show words for 500ms
+          showWords();
+          setTimeout(() => {
+            // Step 3: Show probe and wait for response
+            showProbe();
+          }, TIMING.WORD_DISPLAY);
+        }, TIMING.FIXATION);
+      }
+
+      /**
+       * Display the fixation stimulus "+++"
+       */
+      function showFixation() {
+        clearCanvas();
+        ctx.font = "60px Arial";
+        ctx.fillStyle = "black";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("+++", canvas.width / 2, canvas.height / 2);
+      }
+
+      /**
+       * Display the two words
+       */
+      function showWords() {
+        clearCanvas();
+        ctx.font = "bold 36px Arial";
+        ctx.fillStyle = "black";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+
+        // Display top word above center
+        ctx.fillText(
+          currentTrial.topWord,
+          canvas.width / 2,
+          canvas.height / 2 - 40
+        );
+
+        // Display bottom word below center
+        ctx.fillText(
+          currentTrial.bottomWord,
+          canvas.width / 2,
+          canvas.height / 2 + 40
+        );
+      }
+
+      /**
+       * Display the probe (arrow) and wait for response
+       */
+      function showProbe() {
+        clearCanvas();
+
+        // Determine vertical position based on which word the probe replaces
+        let yPosition;
+        if (currentTrial.probeReplaces === currentTrial.topWord) {
+          yPosition = canvas.height / 2 - 40; // Top position
+        } else {
+          yPosition = canvas.height / 2 + 40; // Bottom position
+        }
+
+        ctx.font = "bold 60px Arial";
+        ctx.fillStyle = "black";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(currentTrial.probeDirection, canvas.width / 2, yPosition);
+
+        // Start waiting for response
+        awaitingResponse = true;
+
+        // Set timeout for response window
+        responseTimeout = setTimeout(() => {
+          if (awaitingResponse) {
+            handleTimeout();
+          }
+        }, TIMING.RESPONSE_WINDOW);
+      }
+
+      /**
+       * Handle user response
+       */
+      function handleResponse(key) {
+        if (!awaitingResponse) return;
+
+        awaitingResponse = false;
+        clearTimeout(responseTimeout);
+
+        // Determine if response is correct
+        // 'a' key = left arrow (<), correctAnswer = 1
+        // 'l' key = right arrow (>), correctAnswer = 2
+        const userAnswer = key === "a" ? 1 : 2;
+        const isCorrect = userAnswer === currentTrial.correctAnswer;
+
+        if (isCorrect) {
+          correctCount++;
+          window.dot_task_ct = correctCount;
+          // Clear screen for correct responses
+          clearCanvas();
+          setTimeout(() => {
+            runTrial();
+          }, TIMING.FEEDBACK_DISPLAY);
+        } else {
+          showFeedback("WRONG", "red");
+        }
+      }
+
+      /**
+       * Handle response timeout
+       */
+      function handleTimeout() {
+        awaitingResponse = false;
+        showFeedback("Please respond more quickly.", "orange");
+      }
+
+      /**
+       * Display feedback message
+       */
+      function showFeedback(message, color) {
+        clearCanvas();
+        ctx.font = "bold 36px Arial";
+        ctx.fillStyle = color;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(message, canvas.width / 2, canvas.height / 2);
+
+        // Continue to next trial after delay
+        setTimeout(() => {
+          runTrial();
+        }, TIMING.FEEDBACK_DISPLAY);
+      }
+
+      /**
+       * End the game and show results
+       */
+      function endGame() {
+        currentState = GameState.FINISHED;
+
+        // Calculate time engaged and update global metrics
+        const gameEndTime = Date.now();
+        window.dot_task_te = gameEndTime - gameStartTime;
+        window.dot_task_ct = correctCount;
+
+        // Log metrics to console
+        console.log("=== Game Metrics ===");
+        console.log("dot_task_e (engaged):", window.dot_task_e);
+        console.log("dot_task_te (time engaged in ms):", window.dot_task_te);
+        console.log("dot_task_ct (correct trials):", window.dot_task_ct);
+        console.log("===================");
+
+        Qualtrics.SurveyEngine.setJSEmbeddedData(
+          "dot_task_e",
+          window.dot_task_e
+        );
+        Qualtrics.SurveyEngine.setJSEmbeddedData(
+          "dot_task_te",
+          window.dot_task_te
+        );
+        Qualtrics.SurveyEngine.setJSEmbeddedData(
+          "dot_task_ct",
+          window.dot_task_ct
+        );
+
+        clearCanvas();
+
+        const totalScoredTrials = PART_2_TRIALS + PART_3_TRIALS; // Only count parts 2 and 3
+        const accuracy = ((correctCount / totalScoredTrials) * 100).toFixed(1);
+
+        ctx.font = "36px Arial";
+        ctx.fillStyle = "black";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(
+          "Task Complete!",
+          canvas.width / 2,
+          canvas.height / 2 - 60
+        );
+      }
+
+      /**
+       * Clear the canvas
+       */
+      function clearCanvas() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+
+      /**
+       * Initialize the game - show initial message
+       */
+      function init() {
+        ctx.font = "24px Arial";
+        ctx.fillStyle = "#666";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "alphabetic";
+        ctx.fillText(
+          'Click "Start Game" to begin',
+          canvas.width / 2,
+          canvas.height / 2
+        );
+      }
+
+      // Initialize on load
+      init();
+    </script>
+  </body>
+</html>
