@@ -876,12 +876,16 @@
         },
       ];
 
-      const TOTAL_TRIALS = DOT_PROBE_TRIALS.length;
+      //   const TOTAL_TRIALS = DOT_PROBE_TRIALS.length;
+      const TOTAL_TRIALS = 1;
 
       // Trial distribution across parts
-      const PART_1_TRIALS = 3; // Training session
-      const PART_2_TRIALS = 48; // First half of main task
-      const PART_3_TRIALS = 48; // Second half of main task
+      //   const PART_1_TRIALS = 3; // Training session
+      //   const PART_2_TRIALS = 48; // First half of main task
+      //   const PART_3_TRIALS = 48; // Second half of main task
+      const PART_1_TRIALS = 1; // Training session
+      const PART_2_TRIALS = 0; // First half of main task
+      const PART_3_TRIALS = 0; // Second half of main task
 
       // Timing constants (in milliseconds)
       const TIMING = {
@@ -1040,11 +1044,7 @@
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
 
-        ctx.fillText(
-          `Get ready for part ${partNumber}.`,
-          canvas.width / 2,
-          canvas.height / 2 - 30
-        );
+        ctx.fillText(`Get ready!`, canvas.width / 2, canvas.height / 2 - 30);
 
         ctx.font = "24px Arial";
         ctx.fillStyle = "#666";
